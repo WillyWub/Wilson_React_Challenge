@@ -1,0 +1,2 @@
+The latest version of Python is 3.13.2, and you have version 3.11.11 installed.
+Python is not running in a virtual environment.
