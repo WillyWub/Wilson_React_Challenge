@@ -5,15 +5,22 @@ import type { Schedule, Term } from '../types/schedule';
 
 type TermPageProps = {
   schedule: Schedule;
+  selectedCourseIds: string[];
+  onToggleCourse: (courseId: string) => void;
 };
 
-const TermPage = ({ schedule }: TermPageProps) => {
+const TermPage = ({ schedule, selectedCourseIds, onToggleCourse }: TermPageProps) => {
   const [selectedTerm, setSelectedTerm] = useState<Term>('Fall');
 
   return (
     <section className="flex flex-col gap-8">
       <TermSelector selectedTerm={selectedTerm} onSelectTerm={setSelectedTerm} />
-      <CourseList courses={schedule.courses} term={selectedTerm} />
+      <CourseList
+        courses={schedule.courses}
+        term={selectedTerm}
+        selectedCourseIds={selectedCourseIds}
+        onToggleCourse={onToggleCourse}
+      />
     </section>
   );
 };
