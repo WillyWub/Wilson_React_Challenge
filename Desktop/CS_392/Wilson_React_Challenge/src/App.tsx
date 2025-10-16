@@ -2,6 +2,8 @@ import { useState } from 'react';
 import Banner from './components/Banner';
 import TermPage from './components/TermPage';
 import CourseSelector from './components/CourseSelector';
+import Modal from './components/Modal';
+import CoursePlanModalContent from './components/CoursePlanModalContent';
 import { useJsonQuery } from './utilities/fetch';
 import type { Schedule } from './types/schedule';
 
@@ -9,6 +11,7 @@ const COURSES_URL = 'https://courses.cs.northwestern.edu/394/guides/data/cs-cour
 
 const App = () => {
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
+  const [isCoursePlanOpen, setIsCoursePlanOpen] = useState(false);
   const [schedule, isLoading, error] = useJsonQuery<Schedule>(COURSES_URL);
 
   const handleToggleCourse = (courseId: string) => {
@@ -39,6 +42,7 @@ const App = () => {
           schedule={schedule}
           selectedCourseIds={selectedCourseIds}
           onToggleCourse={handleToggleCourse}
+          onOpenCoursePlan={() => setIsCoursePlanOpen(true)}
         />
         <CourseSelector
           courses={schedule.courses}
@@ -46,6 +50,17 @@ const App = () => {
           onToggleCourse={handleToggleCourse}
         />
       </div>
+
+      <Modal
+        title="Course plan"
+        isOpen={isCoursePlanOpen}
+        onClose={() => setIsCoursePlanOpen(false)}
+      >
+        <CoursePlanModalContent
+          selectedCourseIds={selectedCourseIds}
+          courses={schedule.courses}
+        />
+      </Modal>
     </div>
   );
 };

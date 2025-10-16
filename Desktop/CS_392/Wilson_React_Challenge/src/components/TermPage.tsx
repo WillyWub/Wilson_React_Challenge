@@ -7,14 +7,20 @@ type TermPageProps = {
   schedule: Schedule;
   selectedCourseIds: string[];
   onToggleCourse: (courseId: string) => void;
+  onOpenCoursePlan: () => void;
 };
 
-const TermPage = ({ schedule, selectedCourseIds, onToggleCourse }: TermPageProps) => {
+const TermPage = ({ schedule, selectedCourseIds, onToggleCourse, onOpenCoursePlan }: TermPageProps) => {
   const [selectedTerm, setSelectedTerm] = useState<Term>('Fall');
 
   return (
     <section className="flex flex-col gap-8">
-      <TermSelector selectedTerm={selectedTerm} onSelectTerm={setSelectedTerm} />
+      <TermSelector
+        selectedTerm={selectedTerm}
+        onSelectTerm={setSelectedTerm}
+        onOpenCoursePlan={onOpenCoursePlan}
+        selectedCount={selectedCourseIds.length}
+      />
       <CourseList
         courses={schedule.courses}
         term={selectedTerm}
