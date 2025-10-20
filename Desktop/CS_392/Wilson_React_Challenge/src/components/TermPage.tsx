@@ -8,9 +8,16 @@ type TermPageProps = {
   selectedCourseIds: string[];
   onToggleCourse: (courseId: string) => void;
   onOpenCoursePlan: () => void;
+  onEditCourse: (courseId: string) => void;
 };
 
-const TermPage = ({ schedule, selectedCourseIds, onToggleCourse, onOpenCoursePlan }: TermPageProps) => {
+const TermPage = ({
+  schedule,
+  selectedCourseIds,
+  onToggleCourse,
+  onOpenCoursePlan,
+  onEditCourse
+}: TermPageProps) => {
   const [selectedTerm, setSelectedTerm] = useState<Term>('Fall');
 
   return (
@@ -26,6 +33,7 @@ const TermPage = ({ schedule, selectedCourseIds, onToggleCourse, onOpenCoursePla
         term={selectedTerm}
         selectedCourseIds={selectedCourseIds}
         onToggleCourse={onToggleCourse}
+        onEditCourse={onEditCourse}
       />
     </section>
   );
