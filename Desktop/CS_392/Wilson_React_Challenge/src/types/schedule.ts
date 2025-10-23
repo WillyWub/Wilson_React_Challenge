@@ -1,4 +1,4 @@
-export type Term = 'Fall' | 'Winter' | 'Spring';
+export type Term = 'Fall' | 'Winter' | 'Spring' | 'Summer';
 
 export type Course = {
   term: Term;

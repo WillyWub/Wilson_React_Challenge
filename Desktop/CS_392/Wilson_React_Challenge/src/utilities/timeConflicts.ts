@@ -82,3 +82,11 @@ const coursesConflict = (a: Course, b: Course): boolean => {
 
 export const courseConflictsWithSelection = (candidate: Course, selectedCourses: Course[]): boolean =>
   selectedCourses.some((selected) => coursesConflict(candidate, selected));
+
+export const isValidMeetingString = (meets: string): boolean => {
+  if (!meets.trim()) {
+    return true;
+  }
+
+  return Boolean(parseMeeting(meets));
+};
