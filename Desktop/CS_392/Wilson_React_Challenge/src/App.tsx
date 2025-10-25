@@ -5,16 +5,57 @@ import CourseSelector from './components/CourseSelector';
 import Modal from './components/Modal';
 import CoursePlanModalContent from './components/CoursePlanModalContent';
 import CourseForm from './components/CourseForm';
-import { useJsonQuery } from './utilities/fetch';
-import type { Schedule } from './types/schedule';
+import { useDataQuery } from './utilities/firebase';
+import type { Course, Courses, Schedule } from './types/schedule';
 
-const COURSES_URL = 'https://courses.cs.northwestern.edu/394/guides/data/cs-courses.php';
+const COURSES_PATH = import.meta.env.VITE_FIREBASE_SCHEDULE_PATH ?? 'courses';
+const FALLBACK_SCHEDULE_TITLE =
+  import.meta.env.VITE_FALLBACK_SCHEDULE_TITLE ?? 'Course Schedule';
+const normalizeSchedule = (data: Schedule | Courses | null | undefined): Schedule | null => {
+  if (!data || typeof data !== 'object') {
+    return null;
+  }
+
+  if ('courses' in data && data.courses && typeof data.courses === 'object') {
+    return data as Schedule;
+  }
+
+  if (isCoursesRecord(data)) {
+    return {
+      title: FALLBACK_SCHEDULE_TITLE,
+      courses: data,
+    };
+  }
+
+  return null;
+};
+
+const isCourse = (value: unknown): value is Course => {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const course = value as Partial<Course>;
+  return (
+    typeof course.term === 'string' &&
+    typeof course.number === 'string' &&
+    typeof course.meets === 'string' &&
+    typeof course.title === 'string'
+  );
+};
+
+const isCoursesRecord = (value: unknown): value is Courses => {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  return Object.values(value as Record<string, unknown>).every(isCourse);
+};
 
 const App = () => {
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
   const [isCoursePlanOpen, setIsCoursePlanOpen] = useState(false);
   const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
-  const [schedule, isLoading, error] = useJsonQuery<Schedule>(COURSES_URL);
+  const [data, isLoading, error] = useDataQuery<Schedule | Courses | null>(COURSES_PATH);
+  const schedule = normalizeSchedule(data);
 
   const handleToggleCourse = (courseId: string) => {
     setSelectedCourseIds((prevSelected) =>
