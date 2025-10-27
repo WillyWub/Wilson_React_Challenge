@@ -1,34 +1,18 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Banner from './components/Banner';
 import TermPage from './components/TermPage';
 import CourseSelector from './components/CourseSelector';
 import Modal from './components/Modal';
 import CoursePlanModalContent from './components/CoursePlanModalContent';
 import CourseForm from './components/CourseForm';
-import { useDataQuery } from './utilities/firebase';
+import { useDataQuery, writeDataAtPath } from './utilities/firebase';
 import type { Course, Courses, Schedule } from './types/schedule';
 
 const COURSES_PATH = import.meta.env.VITE_FIREBASE_SCHEDULE_PATH ?? 'courses';
 const FALLBACK_SCHEDULE_TITLE =
   import.meta.env.VITE_FALLBACK_SCHEDULE_TITLE ?? 'Course Schedule';
-const normalizeSchedule = (data: Schedule | Courses | null | undefined): Schedule | null => {
-  if (!data || typeof data !== 'object') {
-    return null;
-  }
 
-  if ('courses' in data && data.courses && typeof data.courses === 'object') {
-    return data as Schedule;
-  }
-
-  if (isCoursesRecord(data)) {
-    return {
-      title: FALLBACK_SCHEDULE_TITLE,
-      courses: data,
-    };
-  }
-
-  return null;
-};
+type ScheduleDataShape = 'schedule' | 'coursesOnly';
 
 const isCourse = (value: unknown): value is Course => {
   if (!value || typeof value !== 'object') {
@@ -50,12 +34,44 @@ const isCoursesRecord = (value: unknown): value is Courses => {
   return Object.values(value as Record<string, unknown>).every(isCourse);
 };
 
+const isSchedule = (value: unknown): value is Schedule => {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const schedule = value as Partial<Schedule>;
+  return (
+    typeof schedule.title === 'string' &&
+    Boolean(schedule.courses) &&
+    typeof schedule.courses === 'object'
+  );
+};
+
+const parseScheduleData = (
+  data: Schedule | Courses | null | undefined
+): { schedule: Schedule | null; shape: ScheduleDataShape | null } => {
+  if (isSchedule(data)) {
+    return { schedule: data, shape: 'schedule' };
+  }
+
+  if (isCoursesRecord(data)) {
+    return {
+      schedule: {
+        title: FALLBACK_SCHEDULE_TITLE,
+        courses: data,
+      },
+      shape: 'coursesOnly',
+    };
+  }
+
+  return { schedule: null, shape: null };
+};
+
 const App = () => {
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([]);
   const [isCoursePlanOpen, setIsCoursePlanOpen] = useState(false);
   const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
   const [data, isLoading, error] = useDataQuery<Schedule | Courses | null>(COURSES_PATH);
-  const schedule = normalizeSchedule(data);
+  const { schedule, shape } = useMemo(() => parseScheduleData(data), [data]);
 
   const handleToggleCourse = (courseId: string) => {
     setSelectedCourseIds((prevSelected) =>
@@ -78,6 +94,20 @@ const App = () => {
   }
 
   const editingCourse = editingCourseId ? schedule.courses[editingCourseId] : null;
+
+  const handleSaveCourse = async (courseId: string, updatedCourse: Course) => {
+    if (!shape) {
+      throw new Error('Cannot save course: schedule data is unavailable.');
+    }
+
+    const coursePath =
+      shape === 'schedule'
+        ? `${COURSES_PATH}/courses/${courseId}`
+        : `${COURSES_PATH}/${courseId}`;
+
+    await writeDataAtPath(coursePath, updatedCourse);
+    setEditingCourseId(null);
+  };
 
   return (
     <div className="min-h-screen bg-slate-100">
@@ -113,8 +143,12 @@ const App = () => {
         isOpen={Boolean(editingCourse)}
         onClose={() => setEditingCourseId(null)}
       >
-        {editingCourse && (
-          <CourseForm course={editingCourse} onCancel={() => setEditingCourseId(null)} />
+        {editingCourse && editingCourseId && (
+          <CourseForm
+            course={editingCourse}
+            onCancel={() => setEditingCourseId(null)}
+            onSubmit={(updatedCourse) => handleSaveCourse(editingCourseId, updatedCourse)}
+          />
         )}
       </Modal>
     </div>

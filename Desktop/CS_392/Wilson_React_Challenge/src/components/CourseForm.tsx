@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import type { Course } from '../types/schedule';
 import type { CourseFormData, CourseFormErrors } from '../utilities/courseValidation';
 import { validateCourseForm } from '../utilities/courseValidation';
@@ -6,24 +6,32 @@ import { validateCourseForm } from '../utilities/courseValidation';
 type CourseFormProps = {
   course: Course;
   onCancel: () => void;
+  onSubmit: (updatedCourse: Course) => Promise<void>;
 };
 
-const CourseForm = ({ course, onCancel }: CourseFormProps) => {
+const CourseForm = ({ course, onCancel, onSubmit }: CourseFormProps) => {
   const [title, setTitle] = useState(course.title);
   const [meets, setMeets] = useState(course.meets);
   const [term, setTerm] = useState<string>(course.term);
   const [number, setNumber] = useState(course.number);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     setTitle(course.title);
     setMeets(course.meets);
     setTerm(course.term);
     setNumber(course.number);
-  }, [course]);
-
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-  };
+    setIsSubmitting(false);
+    setSubmitError(null);
+  }, [course.title, course.meets, course.term, course.number]);
 
   const formValues: CourseFormData = {
     title,
@@ -36,6 +44,51 @@ const CourseForm = ({ course, onCancel }: CourseFormProps) => {
     () => validateCourseForm(formValues),
     [title, term, number, meets]
   );
+
+  const normalizedCourse: Course = useMemo(
+    () => ({
+      title: title.trim(),
+      term: term.trim() as Course['term'],
+      number: number.trim(),
+      meets: meets.trim()
+    }),
+    [title, term, number, meets]
+  );
+
+  const hasErrors = Object.values(errors).some(Boolean);
+  const isDirty = useMemo(
+    () =>
+      normalizedCourse.title !== course.title ||
+      normalizedCourse.term !== course.term ||
+      normalizedCourse.number !== course.number ||
+      normalizedCourse.meets !== course.meets,
+    [normalizedCourse, course]
+  );
+
+  const canSubmit = isDirty && !hasErrors && !isSubmitting;
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!canSubmit) {
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setSubmitError(null);
+      await onSubmit(normalizedCourse);
+    } catch (submitErr) {
+      if (isMountedRef.current) {
+        setSubmitError(
+          submitErr instanceof Error ? submitErr.message : 'Unable to save course right now.'
+        );
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setIsSubmitting(false);
+      }
+    }
+  };
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
@@ -99,6 +152,8 @@ const CourseForm = ({ course, onCancel }: CourseFormProps) => {
         {errors.meets && <p className="mt-1 text-sm text-rose-600">{errors.meets}</p>}
       </div>
 
+      {submitError && <p className="text-sm text-rose-600">{submitError}</p>}
+
       <div className="flex justify-end gap-3">
         <button
           type="button"
@@ -106,6 +161,13 @@ const CourseForm = ({ course, onCancel }: CourseFormProps) => {
           onClick={onCancel}
         >
           Cancel
+        </button>
+        <button
+          type="submit"
+          className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300"
+          disabled={!canSubmit}
+        >
+          {isSubmitting ? 'Saving...' : 'Submit'}
         </button>
       </div>
     </form>

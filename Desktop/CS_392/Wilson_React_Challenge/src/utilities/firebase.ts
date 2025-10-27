@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { useEffect, useState } from 'react';
 import { initializeApp, type FirebaseOptions } from 'firebase/app';
-import { getDatabase, onValue, ref } from 'firebase/database';
+import { getDatabase, onValue, ref, set } from 'firebase/database';
 
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -68,4 +68,9 @@ export const useDataQuery = <T>(path: string): [T | undefined, boolean, Error | 
   }, [path]);
 
   return [data, loading, error];
+};
+
+export const writeDataAtPath = async <T>(path: string, payload: T): Promise<void> => {
+  const dataRef = ref(database, path);
+  await set(dataRef, payload);
 };
