@@ -7,6 +7,7 @@ type CourseListProps = {
   selectedCourseIds: string[];
   onToggleCourse: (courseId: string) => void;
   onEditCourse: (courseId: string) => void;
+  canEdit: boolean;
 };
 
 const CourseList = ({
@@ -14,7 +15,8 @@ const CourseList = ({
   term,
   selectedCourseIds,
   onToggleCourse,
-  onEditCourse
+  onEditCourse,
+  canEdit
 }: CourseListProps) => {
   const visibleCourses = Object.entries(courses).filter(([, course]) => course.term === term);
   const selectedCourses = selectedCourseIds
@@ -76,15 +78,17 @@ const CourseList = ({
                 </div>
               </button>
 
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-blue-500 hover:text-blue-600"
-                  onClick={() => onEditCourse(id)}
-                >
-                  Edit course
-                </button>
-              </div>
+              {canEdit && (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-blue-500 hover:text-blue-600"
+                    onClick={() => onEditCourse(id)}
+                  >
+                    Edit course
+                  </button>
+                </div>
+              )}
             </div>
           </li>
         );

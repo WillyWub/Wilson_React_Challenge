@@ -9,6 +9,7 @@ type TermPageProps = {
   onToggleCourse: (courseId: string) => void;
   onOpenCoursePlan: () => void;
   onEditCourse: (courseId: string) => void;
+  canEdit: boolean;
 };
 
 const TermPage = ({
@@ -16,7 +17,8 @@ const TermPage = ({
   selectedCourseIds,
   onToggleCourse,
   onOpenCoursePlan,
-  onEditCourse
+  onEditCourse,
+  canEdit
 }: TermPageProps) => {
   const [selectedTerm, setSelectedTerm] = useState<Term>('Fall');
 
@@ -34,6 +36,7 @@ const TermPage = ({
         selectedCourseIds={selectedCourseIds}
         onToggleCourse={onToggleCourse}
         onEditCourse={onEditCourse}
+        canEdit={canEdit}
       />
     </section>
   );

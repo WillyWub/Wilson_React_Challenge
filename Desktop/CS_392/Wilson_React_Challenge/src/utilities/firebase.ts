@@ -1,7 +1,15 @@
-// Import the functions you need from the SDKs you need
 import { useEffect, useState } from 'react';
 import { initializeApp, type FirebaseOptions } from 'firebase/app';
-import { getDatabase, onValue, ref, set } from 'firebase/database';
+import { getDatabase, onValue, ref, update } from 'firebase/database';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signInWithPopup,
+  signOut as firebaseAuthSignOut,
+  type User
+} from 'firebase/auth';
+
 
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -40,6 +48,36 @@ if (import.meta.env.VITE_FIREBASE_MEASUREMENT_ID) {
 
 const firebase = initializeApp(firebaseConfig);
 const database = getDatabase(firebase);
+const auth = getAuth(firebase);
+
+export const signInWithGoogle = async () => {
+  const provider = new GoogleAuthProvider();
+  await signInWithPopup(auth, provider);
+};
+
+export const signOut = () => firebaseAuthSignOut(auth);
+
+export type AuthState = {
+  user: User | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+};
+
+export const useAuthState = (): AuthState => {
+  const [user, setUser] = useState<User | null>(auth.currentUser);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
+      setUser(nextUser);
+      setIsLoading(false);
+    });
+
+    return unsubscribe;
+  }, []);
+
+  return { user, isAuthenticated: Boolean(user), isLoading };
+};
 
 export const useDataQuery = <T>(path: string): [T | undefined, boolean, Error | undefined] => {
   const [data, setData] = useState<T>();
@@ -70,7 +108,10 @@ export const useDataQuery = <T>(path: string): [T | undefined, boolean, Error | 
   return [data, loading, error];
 };
 
-export const writeDataAtPath = async <T>(path: string, payload: T): Promise<void> => {
+export const updateDataAtPath = async <T extends Record<string, unknown>>(
+  path: string,
+  payload: Partial<T>
+): Promise<void> => {
   const dataRef = ref(database, path);
-  await set(dataRef, payload);
+  await update(dataRef, payload);
 };

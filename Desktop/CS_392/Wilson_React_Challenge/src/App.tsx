@@ -5,7 +5,7 @@ import CourseSelector from './components/CourseSelector';
 import Modal from './components/Modal';
 import CoursePlanModalContent from './components/CoursePlanModalContent';
 import CourseForm from './components/CourseForm';
-import { useDataQuery, writeDataAtPath } from './utilities/firebase';
+import { updateDataAtPath, useAuthState, useDataQuery } from './utilities/firebase';
 import type { Course, Courses, Schedule } from './types/schedule';
 
 const COURSES_PATH = import.meta.env.VITE_FIREBASE_SCHEDULE_PATH ?? 'courses';
@@ -71,6 +71,7 @@ const App = () => {
   const [isCoursePlanOpen, setIsCoursePlanOpen] = useState(false);
   const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
   const [data, isLoading, error] = useDataQuery<Schedule | Courses | null>(COURSES_PATH);
+  const { isAuthenticated } = useAuthState();
   const { schedule, shape } = useMemo(() => parseScheduleData(data), [data]);
 
   const handleToggleCourse = (courseId: string) => {
@@ -95,17 +96,42 @@ const App = () => {
 
   const editingCourse = editingCourseId ? schedule.courses[editingCourseId] : null;
 
-  const handleSaveCourse = async (courseId: string, updatedCourse: Course) => {
+  const buildCoursePath = (courseId: string) =>
+    shape === 'schedule'
+      ? `${COURSES_PATH}/courses/${courseId}`
+      : `${COURSES_PATH}/${courseId}`;
+
+  const handleSaveCourse = async (
+    courseId: string,
+    originalCourse: Course,
+    updatedCourse: Course
+  ) => {
     if (!shape) {
       throw new Error('Cannot save course: schedule data is unavailable.');
     }
+    if (!isAuthenticated) {
+      return;
+    }
 
-    const coursePath =
-      shape === 'schedule'
-        ? `${COURSES_PATH}/courses/${courseId}`
-        : `${COURSES_PATH}/${courseId}`;
+    const changedFields: Partial<Course> = {};
+    if (originalCourse.title !== updatedCourse.title) {
+      changedFields.title = updatedCourse.title;
+    }
+    if (originalCourse.term !== updatedCourse.term) {
+      changedFields.term = updatedCourse.term;
+    }
+    if (originalCourse.number !== updatedCourse.number) {
+      changedFields.number = updatedCourse.number;
+    }
+    if (originalCourse.meets !== updatedCourse.meets) {
+      changedFields.meets = updatedCourse.meets;
+    }
 
-    await writeDataAtPath(coursePath, updatedCourse);
+    if (Object.keys(changedFields).length === 0) {
+      return;
+    }
+
+    await updateDataAtPath<Course>(buildCoursePath(courseId), changedFields);
     setEditingCourseId(null);
   };
 
@@ -118,7 +144,13 @@ const App = () => {
           selectedCourseIds={selectedCourseIds}
           onToggleCourse={handleToggleCourse}
           onOpenCoursePlan={() => setIsCoursePlanOpen(true)}
-          onEditCourse={setEditingCourseId}
+          onEditCourse={(courseId) => {
+            if (!isAuthenticated) {
+              return;
+            }
+            setEditingCourseId(courseId);
+          }}
+          canEdit={isAuthenticated}
         />
         <CourseSelector
           courses={schedule.courses}
@@ -143,11 +175,13 @@ const App = () => {
         isOpen={Boolean(editingCourse)}
         onClose={() => setEditingCourseId(null)}
       >
-        {editingCourse && editingCourseId && (
+        {editingCourse && editingCourseId && isAuthenticated && (
           <CourseForm
             course={editingCourse}
             onCancel={() => setEditingCourseId(null)}
-            onSubmit={(updatedCourse) => handleSaveCourse(editingCourseId, updatedCourse)}
+            onSubmit={(updatedCourse) =>
+              handleSaveCourse(editingCourseId, editingCourse, updatedCourse)
+            }
           />
         )}
       </Modal>
