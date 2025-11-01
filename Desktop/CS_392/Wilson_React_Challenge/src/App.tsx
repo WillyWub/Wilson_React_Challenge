@@ -5,7 +5,7 @@ import CourseSelector from './components/CourseSelector';
 import Modal from './components/Modal';
 import CoursePlanModalContent from './components/CoursePlanModalContent';
 import CourseForm from './components/CourseForm';
-import { updateDataAtPath, useAuthState, useDataQuery } from './utilities/firebase';
+import { updateDataAtPath, useAdminStatus, useAuthState, useDataQuery } from './utilities/firebase';
 import type { Course, Courses, Schedule } from './types/schedule';
 
 const COURSES_PATH = import.meta.env.VITE_FIREBASE_SCHEDULE_PATH ?? 'courses';
@@ -71,7 +71,9 @@ const App = () => {
   const [isCoursePlanOpen, setIsCoursePlanOpen] = useState(false);
   const [editingCourseId, setEditingCourseId] = useState<string | null>(null);
   const [data, isLoading, error] = useDataQuery<Schedule | Courses | null>(COURSES_PATH);
-  const { isAuthenticated } = useAuthState();
+  const { user, isAuthenticated } = useAuthState();
+  const { isAdmin, isLoading: isAdminLoading } = useAdminStatus(user?.uid);
+  const canEdit = isAuthenticated && isAdmin;
   const { schedule, shape } = useMemo(() => parseScheduleData(data), [data]);
 
   const handleToggleCourse = (courseId: string) => {
@@ -109,7 +111,7 @@ const App = () => {
     if (!shape) {
       throw new Error('Cannot save course: schedule data is unavailable.');
     }
-    if (!isAuthenticated) {
+    if (!canEdit) {
       return;
     }
 
@@ -145,12 +147,12 @@ const App = () => {
           onToggleCourse={handleToggleCourse}
           onOpenCoursePlan={() => setIsCoursePlanOpen(true)}
           onEditCourse={(courseId) => {
-            if (!isAuthenticated) {
+            if (!canEdit || isAdminLoading) {
               return;
             }
             setEditingCourseId(courseId);
           }}
-          canEdit={isAuthenticated}
+          canEdit={canEdit && !isAdminLoading}
         />
         <CourseSelector
           courses={schedule.courses}
@@ -175,7 +177,7 @@ const App = () => {
         isOpen={Boolean(editingCourse)}
         onClose={() => setEditingCourseId(null)}
       >
-        {editingCourse && editingCourseId && isAuthenticated && (
+        {editingCourse && editingCourseId && canEdit && (
           <CourseForm
             course={editingCourse}
             onCancel={() => setEditingCourseId(null)}

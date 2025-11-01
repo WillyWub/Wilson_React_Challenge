@@ -115,3 +115,37 @@ export const updateDataAtPath = async <T extends Record<string, unknown>>(
   const dataRef = ref(database, path);
   await update(dataRef, payload);
 };
+
+export const useAdminStatus = (uid: string | null | undefined): {
+  isAdmin: boolean;
+  isLoading: boolean;
+} => {
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isLoading, setIsLoading] = useState(Boolean(uid));
+
+  useEffect(() => {
+    if (!uid) {
+      setIsAdmin(false);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    const adminRef = ref(database, `admins/${uid}`);
+    const unsubscribe = onValue(
+      adminRef,
+      (snapshot) => {
+        setIsAdmin(Boolean(snapshot.val()));
+        setIsLoading(false);
+      },
+      () => {
+        setIsAdmin(false);
+        setIsLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [uid]);
+
+  return { isAdmin, isLoading };
+};
